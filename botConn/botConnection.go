@@ -1,5 +1,7 @@
 package botconn
 
+//Здесь реализовано соединение с ботом
+
 import (
 	"log"
 	"os"
@@ -10,6 +12,7 @@ import (
 
 var botConn *tgbotapi.BotAPI
 
+// Подключаемся к боту
 func GetBotConnection() *tgbotapi.BotAPI {
 	if botConn == nil {
 		// Загружаем переменные окружения из .env файла
@@ -32,13 +35,13 @@ func GetBotConnection() *tgbotapi.BotAPI {
 
 		log.Printf("Авторизован как %s", bot.Self.UserName)
 
-		// Сохраняем ссылку на бота в глобальной переменной
 		botConn = bot
 	}
 
 	return botConn
 }
 
+// Канал по которому будут обрабатываться сообщения
 func GetUpdates() tgbotapi.UpdatesChannel {
 	// Создаем соединение с ботом
 	bot := GetBotConnection()
