@@ -3,6 +3,7 @@ package getreqforpanel
 //Здесь будем писать GET запросы к панели https://www.postman.com/hsanaei/3x-ui/documentation/q1l5l0u/3x-ui
 
 import (
+	database "bot/DataBase"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -12,18 +13,14 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 )
 
-type ClientSettings struct {
-	ID       int    `json:"id"`
-	Settings string `json:"settings"`
-}
-
 // Аутентификация в панели
-func Authenticate() {
+func Authenticate() []*http.Cookie {
 	urlStr := "http://212.113.116.19:1860/5GdMclkztE8Cn3g/login"
 	method := "POST"
 
@@ -43,7 +40,6 @@ func Authenticate() {
 	req, err := http.NewRequest(method, urlStr, strings.NewReader(data.Encode()))
 	if err != nil {
 		fmt.Println("Error creating request:", err)
-		return
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -52,23 +48,21 @@ func Authenticate() {
 	res, err := client.Do(req)
 	if err != nil {
 		fmt.Println("Error making request:", err)
-		return
 	}
 	defer res.Body.Close()
+
+	cookies := res.Cookies()
 
 	fmt.Println("Response Status:", res.Status)
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		fmt.Println("Error reading response body:", err)
-		return
 	}
 
-	fmt.Println("Response Body Length:", len(body))
-
-	fmt.Printf("Response Body (hex): %x\n", body)
-
 	fmt.Println("Response Body:", string(body))
+
+	return cookies
 }
 
 // Обноваление данных о клиенте
@@ -93,10 +87,13 @@ func UpdateClient() {
 		},
 	}
 
-	clientSettings := ClientSettings{
-		ID:       3,
-		Settings: string(mustJSONMarshal(settings)),
+	clientSettings := map[string]interface{}{
+		"id":       4,
+		"settings": string(mustJSONMarshal(settings)),
 	}
+
+	fmt.Println(string(mustJSONMarshal(settings)))
+	fmt.Println(json.Marshal(clientSettings))
 
 	payload, err := json.Marshal(clientSettings)
 	if err != nil {
@@ -137,38 +134,59 @@ func mustJSONMarshal(v interface{}) []byte {
 }
 
 // Добавление нового клиента
-func AddNewUser(email string, limitIP int, totalGB int, expiryTime int, enable bool, telegram_id int) {
-	url := "http://localhost:2053/panel/api/inbounds/addClient"
+func AddNewUser(email string, limitIP int, totalGB int, expiryTime int, enable bool, telegram_id int, payment bool) {
+	url := "http://212.113.116.19:1860/5GdMclkztE8Cn3g/panel/api/inbounds/addClient"
 	method := "POST"
 
-	id := NewUuid()
+	// Генерация UUID для клиента
+	clientID := uuid.New().String()
 
+	cookies := Authenticate()
+
+	var cookieName string
+	var cookieValue string
+
+	for _, cookie := range cookies {
+		cookieName = cookie.Name
+		cookieValue = cookie.Value
+		fmt.Printf("Name: %s, Value: %s\n", cookieName, cookieValue)
+	}
+
+	cookieReq := &http.Cookie{
+		Name:  cookieName,
+		Value: cookieValue,
+	}
+
+	// Создаем структуру clients
+	clients := map[string]interface{}{
+		"id":         clientID,
+		"flow":       "",
+		"email":      email,
+		"limitIp":    limitIP,
+		"totalGB":    totalGB,
+		"expiryTime": expiryTime,
+		"enable":     enable,
+		"tgId":       "",
+		"subId":      fmt.Sprint(telegram_id),
+		"reset":      0,
+	}
+
+	// Сериализуем clients в JSON-строку
 	settings := map[string]interface{}{
-		"clients": []map[string]interface{}{
-			{
-				"id":         id,
-				"alterId":    0,
-				"email":      email,
-				"limitIp":    limitIP,
-				"totalGB":    totalGB,
-				"expiryTime": expiryTime,
-				"enable":     enable,
-				"tgId":       "",
-				"subId":      "",
-			},
-		},
+		"clients": []interface{}{clients},
+	}
+	settingsJSON, _ := json.Marshal(settings)
+
+	// Формируем основной запрос
+	requestBody := map[string]interface{}{
+		"id":       4,
+		"settings": string(settingsJSON),
 	}
 
-	clientSettings := ClientSettings{
-		ID:       3,
-		Settings: string(mustJSONMarshal(settings)),
-	}
+	// Двойная сериализация
+	payload, _ := json.Marshal(requestBody)
 
-	payload, err := json.Marshal(clientSettings)
-	if err != nil {
-		fmt.Println("Error marshalling JSON:", err)
-		return
-	}
+	fmt.Println("Final JSON:", string(payload))
 
 	client := &http.Client{}
 
@@ -177,6 +195,7 @@ func AddNewUser(email string, limitIP int, totalGB int, expiryTime int, enable b
 		fmt.Println("Error creating request:", err)
 		return
 	}
+	req.AddCookie(cookieReq)
 
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
@@ -196,10 +215,57 @@ func AddNewUser(email string, limitIP int, totalGB int, expiryTime int, enable b
 
 	fmt.Println("Response Status:", res.Status)
 	fmt.Println("Response Body:", string(body))
+
+	database.AddNewUser(clientID, telegram_id, email, limitIP, totalGB, expiryTime, enable, payment, time.Now(), time.Now().AddDate(0, 0, 30))
 }
 
 // Генерация нового UUID
 func NewUuid() string {
 	newID := uuid.New()
 	return newID.String()
+}
+
+func GetInbound() {
+	url := "http://212.113.116.19:1860/5GdMclkztE8Cn3g/panel/api/inbounds/getClientTraffics/s729v2km"
+	method := "GET"
+
+	cookies := Authenticate()
+
+	var cookieName string
+	var cookieValue string
+
+	for _, cookie := range cookies {
+		cookieName = cookie.Name
+		cookieValue = cookie.Value
+	}
+
+	cookieReq := &http.Cookie{
+		Name:  cookieName,
+		Value: cookieValue,
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, nil)
+
+	req.AddCookie(cookieReq)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	req.Header.Add("Accept", "application/json")
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(string(body))
 }

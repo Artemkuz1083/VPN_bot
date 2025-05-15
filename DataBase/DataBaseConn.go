@@ -62,7 +62,12 @@ func AddNewUser(uuid string, telegram_id int, email string, limit_ip int, totalG
 	}
 	defer db.Close()
 
-	//query := "INSERT INTO users (uuid, telegram_id, email, limitip, totalgb, expirytime, enable, payment, start_sub, end_sub) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
+	query := "INSERT INTO users (uuid, telegram_id, email, limitip, totalgb, expirytime, enable, payment, start_sub, end_sub) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
+	err = db.QueryRow(query, uuid, telegram_id, email, limit_ip, totalGB, expiryTime, enable, payment, start_sub.Format("2006-01-02"), end_sub.Format("2006-01-02")).Err()
 
-	return false
+	if err != nil {
+		return false
+	}
+
+	return true
 }

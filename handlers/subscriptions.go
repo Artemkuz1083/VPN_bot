@@ -6,7 +6,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-func Subscription(bot *tgbotapi.BotAPI, chatID int64, msgID int) {
+func Subscription(bot *tgbotapi.BotAPI, chatID int64) {
 	msgText := "Ниже представлены варианты подписок"
 
 	// Создаем кнопки
@@ -25,10 +25,10 @@ func Subscription(bot *tgbotapi.BotAPI, chatID int64, msgID int) {
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(row1, row2, row3, row4)
 
-	editMsg := tgbotapi.NewEditMessageText(chatID, msgID, msgText)
-	editMsg.ReplyMarkup = &keyboard
+	msg := tgbotapi.NewMessage(chatID, msgText)
+	msg.ReplyMarkup = &keyboard
 
-	_, err := bot.Send(editMsg)
+	_, err := bot.Send(msg)
 	if err != nil {
 		log.Fatalf("Ошибка при редактировании сообщения: %v", err)
 	}
