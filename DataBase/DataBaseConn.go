@@ -71,3 +71,43 @@ func AddNewUser(uuid string, telegram_id int, email string, limit_ip int, totalG
 
 	return true
 }
+
+func StatusPayment(telegram_id int) (bool, error) {
+	db, err := connection()
+	if err != nil {
+		return false, err
+	}
+	defer db.Close()
+
+	var payment bool
+	query := "SELECT payment FROM users WHERE telegram_id=$1"
+	err = db.QueryRow(query, telegram_id).Scan(&payment)
+
+	if err != nil {
+		return false, err
+	}
+
+	return payment, nil
+}
+
+func UpdateStatusPayment(telegram_id int) (bool, error) {
+	db, err := connection()
+	if err != nil {
+		return false, err
+	}
+	defer db.Close()
+
+	query := "UPDATE users SET payment = true WHERE telegram_id=$1"
+	res, err := db.Exec(query, telegram_id)
+
+	if err != nil {
+		return false, err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	return rowsAffected > 0, nil
+}

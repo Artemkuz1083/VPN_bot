@@ -33,13 +33,9 @@ func main() {
 					if database.CheckUserExists(userId) {
 						handlers.StartMenuForNewUsers(bot, update.Message.Chat.ID)
 					} else {
-						getreqforpanel.AddNewUser(update.Message.From.FirstName, 0, 0, 0, true, userId, true)
+						getreqforpanel.AddNewUser(update.Message.From.FirstName, 0, 0, 0, true, userId, false)
 						handlers.StartMenuForNewUsers(bot, update.Message.Chat.ID)
 					}
-				case "132":
-					getreqforpanel.Authenticate()
-				case "add":
-					getreqforpanel.AddNewUser(update.Message.From.FirstName, 0, 0, 0, true, userId, true)
 				}
 
 			}
@@ -54,17 +50,42 @@ func HandleCallback(bot *tgbotapi.BotAPI, update tgbotapi.Update, userId int) {
 
 	switch callback.Data {
 	case "get_key":
-		responseMessage = fmt.Sprintf("Ваш ключ: http://212.113.116.19:2096/sub/%d", userId)
+		status, _ := database.StatusPayment(userId)
+		if status {
+			responseMessage = fmt.Sprintf("Ваш ключ: http://212.113.116.19:2096/sub/%d", userId)
+		} else {
+			responseMessage = "Сначала оплатите подписку"
+		}
 	case "extend_subscription":
 		responseMessage = "Варианты подписок"
 	case "month":
-		responseMessage = "Подписка на месяц оформлена"
+		stat, _ := database.UpdateStatusPayment(userId)
+		if stat {
+			responseMessage = "Подписка оформлена"
+		} else {
+			responseMessage = "Подписка не оформлена"
+		}
 	case "3_months":
-		responseMessage = "Подписка на 3 месяца оформлена"
+		stat, _ := database.UpdateStatusPayment(userId)
+		if stat {
+			responseMessage = "Подписка оформлена"
+		} else {
+			responseMessage = "Подписка не оформлена"
+		}
 	case "6_months":
-		responseMessage = "Подписка на полгода оформлена"
+		stat, _ := database.UpdateStatusPayment(userId)
+		if stat {
+			responseMessage = "Подписка оформлена"
+		} else {
+			responseMessage = "Подписка не оформлена"
+		}
 	case "year":
-		responseMessage = "Подписка на год оформлена"
+		stat, _ := database.UpdateStatusPayment(userId)
+		if stat {
+			responseMessage = "Подписка оформлена"
+		} else {
+			responseMessage = "Подписка не оформлена"
+		}
 	default:
 		responseMessage = "Неизвестная команда."
 	}
